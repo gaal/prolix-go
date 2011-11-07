@@ -1,0 +1,8 @@
+Better tty control: enter raw mode while waiting for keypress. Probably
+want this in a library.
+
+Snippet lines (the Perl implementation does this already)
+
+Config files (simple version already in Perl) and profiles.
+
+Better `auto` filenames?
