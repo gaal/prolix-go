@@ -39,26 +39,42 @@ package main
 
 import (
 	"bufio"
-	"exec"
-	"flag"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
-	"path/filepath"
 
-	"bitbucket.org/binet/go-readline"
+	"github.com/bobappleyard/readline"
+	"github.com/gaal/go-options/options"
 )
 
 const versionString = "0.01-go"
 
+const timestampFormat = "20060102T150405" // yyyyMMddThhmmss in localtime.
+
+const optionSpec = `
+prolix [PROLIX OPTIONS] -- my_command [SPAWNED COMMAND OPTIONS]
+Runs "my_command", filtering its standard output and error.
+Hit ENTER while the command is running to add new filters. "help" in that
+mode will show you a list of available commands.
+--
+l,log= log output to a file. The special file "auto" let me pick a name.
+p,pipe force prolix into pipe mode (not interactive).
+v,verbose print some information about what prolix is doing.
+r,ignore-re= ignore lines matching this regexp.
+n,ignore-line= ignore lines equal to this entirely.
+b,ignore-substring= ignore lines containing this substring.
+s,snippet= trim the line with this substitution. e.g., s/DEBUG|INFO//.
+`
+
 var (
-	log = flag.String(
-		"log", "", "log output file. 'auto' means I pick the filename")
-	pipe    = flag.Bool("pipe", false, "pipe mode")
-	verbose = flag.Bool("verbose", false, "be verbose")
-	version = flag.Bool("version", false, "print version and exit")
+	log     string
+	pipe    = false
+	verbose = false
 
 	ignoreRe        = make([]string, 0)
 	ignoreLine      = make([]string, 0)
@@ -72,7 +88,7 @@ var (
 	linesTotal      = 0
 	linesSuppressed = 0
 
-	unaryRe = regexp.MustCompile(`\s*(\S+)\s+(.*)`)
+	unaryRe = regexp.MustCompile(`\s*(\S+)\s+(.+)`)
 
 	// The command being run if we're in spawn mode, or nil.
 	spawnedProgram *string
@@ -80,32 +96,36 @@ var (
 	logFile *os.File
 )
 
-// The flags package doesn't support multiple flag values, e.g., -i 1 -i 2.
-// Handle them ourselves. Must be called before flag.Parse().
-func parseMultiValueArgs(args *[]string) {
-	grab := func(dest *[]string, i *int) {
-		if *i == len(*args) {
-			fmt.Errorf("flag needs an argument: %s", (*args)[*i])
-			os.Exit(2)
+// A go-options compatible parser.
+func myParse(s *options.OptionSpec, option string, value *string) {
+	if value == nil {
+		switch s.GetCanonical(option) {
+		case "pipe":
+			pipe = true
+		case "verbose":
+			verbose = true
+		case "version":
+			{
+				fmt.Printf("prolix %s\n", versionString)
+				os.Exit(0)
+			}
+		default:
+			s.PrintUsageAndExit("Unknown option: " + option)
 		}
-
-		*dest = append(*dest, (*args)[*i+1])
-		copy((*args)[*i:], (*args)[*i+2:])
-		*args = (*args)[:len(*args)-2]
-		(*i)--
-	}
-	for i := 0; i < len(*args); i++ {
-		// We allow both --foo-bar and --foo_bar.
-		switch strings.Replace((*args)[i], "_", "-", -1) {
-		case "--ignore-re", "-r":
-			grab(&ignoreRe, &i)
-		case "--ignore-line", "-i":
-			grab(&ignoreLine, &i)
-		case "--ignore-substring", "-b":
-			grab(&ignoreSubstring, &i)
-		//case "--snippet", "-s": grab(&snippet, &i)
-		case "--snippet", "-s":
-			panic("unimplemented")
+	} else {
+		switch s.GetCanonical(option) {
+		case "log":
+			log = *value
+		case "ignore-re":
+			ignoreRe = append(ignoreRe, *value)
+		case "ignore-line":
+			ignoreLine = append(ignoreLine, *value)
+		case "ignore-substring":
+			ignoreSubstring = append(ignoreSubstring, *value)
+		case "snippet":
+			snippet = append(snippet, *value)
+		default:
+			s.PrintUsageAndExit("Unknown option: " + option)
 		}
 	}
 }
@@ -126,14 +146,12 @@ func importIgnoreRE(pats []string) {
 // %d expands to the current time.
 func openLog() {
 	closeLog()
-	if log == nil || *log == "" {
+	if log == "" {
 		return
 	}
 
-	now := time.LocalTime()
-	nowString := fmt.Sprintf("%4d%02d%02dT%02d%02d%02d",
-		now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second)
-	filename := *log
+	nowString := time.Now().Format(timestampFormat)
+	filename := log
 	if filename == "auto" {
 		if spawnedProgram == nil { // Pipe mode.
 			filename = "prolix.%d"
@@ -166,36 +184,52 @@ func closeLog() {
 	}
 }
 
+var completionWords = []string{
+	"ignore-line",
+	"ignore-re",
+	"ignore-substring",
+	"snippet",
+
+	"pats",
+	"quit",
+	"stats",
+	"help"}
+
+func interactiveCompletion(text string) (out []string) {
+	for _, word := range completionWords {
+		if strings.HasPrefix(word, text) {
+			out = append(out, word)
+		}
+	}
+	return
+}
+
 func main() {
-	parseMultiValueArgs(&os.Args)
-	flag.Parse()
-	args := flag.Args()
+	readline.Completer = interactiveCompletion
+	spec := options.NewOptions(optionSpec).SetParseCallback(myParse)
+	opt := spec.Parse(os.Args[1:])
+	args := opt.Leftover
 	importIgnoreRE(ignoreRe)
 	openLog()
 
-	if *version {
-		fmt.Printf("prolix %s\n", versionString)
-		os.Exit(0)
-	}
-
-	if len(args) == 0 || *pipe {
+	if len(args) == 0 || pipe {
 		prolixPipe()
 	} else {
 		prolixSpawn(args)
 	}
 
-	if *verbose {
+	if verbose {
 		fmt.Printf("Done. Suppressed %d/%d lines.\n",
 			linesSuppressed, linesTotal)
 	}
 }
 
 func prolixSpawn(args []string) {
-	if *verbose {
+	if verbose {
 		fmt.Printf("Running: %q\n", args)
 	}
 
-	cmd := exec.Command(flag.Args()[0], (flag.Args())[1:]...)
+	cmd := exec.Command(args[0], args[1:]...)
 	outReader, err := cmd.StdoutPipe()
 	if err != nil {
 		panic(err)
@@ -225,7 +259,7 @@ func prolixSpawn(args []string) {
 }
 
 func prolixPipe() {
-	if *verbose {
+	if verbose {
 		fmt.Println("Running in pipe mode")
 	}
 
@@ -257,12 +291,12 @@ func prolixPipe() {
 // Unlikely in most cases? TODO(gaal): maybe add a way for a caller tor
 // signal to us that Wait succeeded.
 func shutdown(process *os.Process) {
-	process.Signal(os.SIGTERM)
+	process.Signal(os.UnixSignal(syscall.SIGTERM))
 
 	go func() {
 		time.Sleep(10e9)
 		if _, err := os.FindProcess(process.Pid); err == nil {
-			process.Signal(os.SIGKILL)
+			process.Signal(os.UnixSignal(syscall.SIGKILL)) // == process.Kill()
 		}
 	}()
 }
@@ -320,19 +354,18 @@ func okLine(line string) bool {
 }
 
 // Gets additional suppression patterns, etc. from the user.
-// TODO(gaal): add completion to go-readline?
 func interact(done chan<- string) {
-	prompt := "prolix> " // I wonder why I can't make this const.
+	const prompt = "prolix> "
 L:
 	for {
-		cmd := readline.ReadLine(&prompt)
-		if cmd == nil || *cmd == "" {
+		cmd := readline.String(prompt)
+		if cmd == "" {
 			break L
 		}
-		readline.AddHistory(*cmd)
-		unary := unaryRe.FindStringSubmatch(*cmd)
+		readline.AddHistory(cmd)
+		unary := unaryRe.FindStringSubmatch(cmd)
 		if unary == nil {
-			trimmed := strings.TrimSpace(*cmd)
+			trimmed := strings.TrimSpace(cmd)
 			switch trimmed {
 			case "quit":
 				done <- "quit"
@@ -364,8 +397,8 @@ L:
 }
 
 func printInteractiveHelp() {
-	fmt.Print(
-		`ignore-line      - add a full match to ignore
+	fmt.Print(`
+ignore-line      - add a full match to ignore
 ignore-re        - add an ignore pattern, e.g. ^(FINE|DEBUG)
 ignore-substring - add a partial match to ignore
 pats             - list ignore patterns
@@ -434,6 +467,10 @@ func demux(outc, errc <-chan string, done chan<- string) {
 			}
 		case <-keypress:
 			interacting = true
+			if verbose {
+				fmt.Println(
+					`Press ENTER to go back, or enter "help" for a list of commands.`)
+			}
 			go interact(doneInteractive)
 		case res := <-doneInteractive:
 			if res == "quit" {
