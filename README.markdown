@@ -25,7 +25,8 @@ You can run existing output via a pipe to prolix and thus filter it, but
 the usual way of invoking it is to pass the command to run on its own
 command line, separated by "`--`".
 
-Examples:
+Examples
+--------
 
 `prolix --ignore-substring '(spam)' -- mycmd --spamlevel=4`
 
@@ -33,6 +34,6 @@ Examples:
 
 
 
-Prolix is written by Gaal Yahas <gaal@forum2.org>.
+Prolix is written by Gaal Yahas <gaal@forum2.org>.  
 Patches/forks are welcome; please see the code at
 https://github.com/gaal/prolix-go
