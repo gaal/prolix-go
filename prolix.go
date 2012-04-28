@@ -195,7 +195,7 @@ var completionWords = []string{
 	"stats",
 	"help"}
 
-func interactiveCompletion(text string) (out []string) {
+func interactiveCompletion(text, ctx string) (out []string) {
 	for _, word := range completionWords {
 		if strings.HasPrefix(word, text) {
 			out = append(out, word)
@@ -291,12 +291,12 @@ func prolixPipe() {
 // Unlikely in most cases? TODO(gaal): maybe add a way for a caller tor
 // signal to us that Wait succeeded.
 func shutdown(process *os.Process) {
-	process.Signal(os.UnixSignal(syscall.SIGTERM))
+	process.Signal(syscall.SIGTERM)
 
 	go func() {
 		time.Sleep(10e9)
 		if _, err := os.FindProcess(process.Pid); err == nil {
-			process.Signal(os.UnixSignal(syscall.SIGKILL)) // == process.Kill()
+			process.Signal(syscall.SIGKILL) // == process.Kill()
 		}
 	}()
 }
