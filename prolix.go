@@ -83,7 +83,8 @@ var (
 )
 
 var (
-	ignoreReVals = make([]*regexp.Regexp, 0)
+	ignoreReVals     = make([]*regexp.Regexp, 0)
+	substitutionVals = make([]Substitution, 0)
 
 	linesTotal      = 0
 	linesSuppressed = 0
@@ -95,6 +96,12 @@ var (
 
 	logFile *os.File
 )
+
+type Substitution struct {
+	search  *regexp.Regexp
+	replace string
+	global  bool
+}
 
 // A go-options compatible parser.
 func myParse(s *options.OptionSpec, option string, value *string) {
@@ -134,6 +141,67 @@ func importIgnoreRE(pats []string) {
 	for _, v := range pats {
 		ignoreReVals = append(ignoreReVals, regexp.MustCompile(v))
 	}
+}
+
+func importSnippet(subsitutions []string) (ok bool) {
+	for _, sub := range subsitutions {
+		if len(sub) < 4 {
+			fmt.Fprint(os.Stderr, "invalid substitution: ", sub)
+			return
+		}
+		delim := sub[1:2]
+		// TODO(gaal): paired delimiters, e.g., s{foo}{bar}
+		parse := regexp.MustCompile("^s" + delim +
+			`((?:\\.|[^` + regexp.QuoteMeta(delim) + `])*)` + delim +
+			`((?:\\.|[^` + regexp.QuoteMeta(delim) + `])*)` + delim + "([ig])*$")
+		parsedSub := parse.FindStringSubmatch(sub)
+		if len(parsedSub) != 4 {
+			fmt.Fprint(os.Stderr, "invalid substitution: ", sub)
+			return
+		}
+		global := strings.Contains(parsedSub[3], "g")
+		ignoreCase := strings.Contains(parsedSub[3], "i")
+		pat := parsedSub[1]
+		if ignoreCase {
+			pat = "(?i)" + pat
+		}
+		if search, err := regexp.Compile(pat); err == nil {
+			substitutionVals = append(substitutionVals, Substitution{search, parsedSub[2], global})
+		} else {
+			fmt.Fprint(os.Stderr, "invalid substitution: ", sub)
+			return
+		}
+	}
+	return true
+}
+
+// regexp does not have a ReplaceFirst. Go figure.
+func ReplaceFirst(search *regexp.Regexp, replace, input string) string {
+	if m := search.FindStringSubmatchIndex(input); m != nil {
+		output := make([]byte, m[0])
+		copy(output, input[0:m[0]])
+		output = search.ExpandString(output, replace, input, m)
+		if m[1] < len(input) {
+			return string(output) + input[m[1]:]
+		}
+		return string(output)
+	}
+	return input
+}
+
+func substitute(sub Substitution, input string) string {
+	if sub.global {
+		return sub.search.ReplaceAllString(input, sub.replace)
+	}
+	return ReplaceFirst(sub.search, sub.replace, input)
+}
+
+func substituteAll(input string) (out string) {
+	out = input
+	for _, sub := range substitutionVals {
+		out = substitute(sub, out)
+	}
+	return
 }
 
 // Opens a file to keep our captured output in. Stdout and Stderr are
@@ -210,6 +278,9 @@ func main() {
 	opt := spec.Parse(os.Args[1:])
 	args := opt.Leftover
 	importIgnoreRE(ignoreRe)
+	if !importSnippet(snippet) {
+		os.Exit(1)
+	}
 	openLog()
 
 	if len(args) == 0 || pipe {
@@ -319,11 +390,15 @@ func filterLines(lines *[]string) {
 	for len(*lines) > 0 {
 		line := (*lines)[0]
 		linesTotal++
-		if okLine(strings.TrimRight(line, "\n")) {
-			// TODO(gaal): snippet line
-			fmt.Print(line)
+		trimmed := strings.TrimRight(line, "\n")
+		if okLine(trimmed) {
+			trimmed = substituteAll(trimmed)
+			if strings.HasSuffix(line, "\n") {
+				trimmed = trimmed + "\n"
+			}
+			fmt.Print(trimmed)
 			if logFile != nil {
-				if _, err := logFile.WriteString(line); err != nil {
+				if _, err := logFile.WriteString(trimmed); err != nil {
 					panic(err)
 				}
 			}
@@ -387,7 +462,9 @@ L:
 			case "ignore-substring":
 				ignoreSubstring = append(ignoreSubstring, unary[2])
 			case "snippet":
-				panic("unimplemented")
+				if importSnippet(unary[2:3]) {
+					snippet = append(snippet, unary[2])
+				}
 			default:
 				fmt.Println("Unknown unary command. Try 'help'.")
 			}

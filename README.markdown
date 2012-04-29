@@ -5,7 +5,7 @@ a command and filtering out uninteresting lines.
 
 `--ignore-{re, line, substring}` may be used to suppress lines completely.
 `--snippet` may be used to rewrite a line, perhaps to trim a log field you're
-not interested in on your console. [notyet]
+not interested in on your console.
 
 These flags can be specified more than once.
 
@@ -15,7 +15,7 @@ output the command makes.
 
 Prolix can also log its own output to a file, so that if you regularly use
 it to debug a server, for example, you can keep somewhat compact logs
-automatically. [notyet]
+automatically.
 
 Since Prolix knows your command line, it can figure out a profile for
 commands you run, so it'll remember different filters for different
