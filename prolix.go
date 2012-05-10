@@ -62,9 +62,11 @@ Runs "my_command", filtering its standard output and error.
 Hit ENTER while the command is running to add new filters. "help" in that
 mode will show you a list of available commands.
 --
+h,help print this usage string and exit.
 l,log= log output to a file. The special file "auto" let me pick a name.
 p,pipe force prolix into pipe mode (not interactive).
 v,verbose print some information about what prolix is doing.
+V,version print version information.
 r,ignore-re= ignore lines matching this regexp.
 n,ignore-line= ignore lines equal to this entirely.
 b,ignore-substring= ignore lines containing this substring.
@@ -107,6 +109,8 @@ type Substitution struct {
 func myParse(s *options.OptionSpec, option string, value *string) {
 	if value == nil {
 		switch s.GetCanonical(option) {
+		case "help":
+			s.PrintUsageAndExit("")
 		case "pipe":
 			pipe = true
 		case "verbose":
