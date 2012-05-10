@@ -52,7 +52,7 @@ import (
 	"github.com/gaal/go-options/options"
 )
 
-const versionString = "0.03-go"
+const versionString = "0.04-go"
 
 const timestampFormat = "20060102T150405" // yyyyMMddThhmmss in localtime.
 
