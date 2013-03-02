@@ -52,18 +52,18 @@ import (
 	"github.com/gaal/go-options/options"
 )
 
-const versionString = "0.04-go"
+const versionString = "0.05-go"
 
 const timestampFormat = "20060102T150405" // yyyyMMddThhmmss in localtime.
 
-const optionSpec = `
-prolix [PROLIX OPTIONS] -- my_command [SPAWNED COMMAND OPTIONS]
+const optionSpec = `prolix [PROLIX OPTIONS] -- my_command [SPAWNED COMMAND OPTIONS]
+
 Runs "my_command", filtering its standard output and error.
 Hit ENTER while the command is running to add new filters. "help" in that
 mode will show you a list of available commands.
 --
 h,help print this usage string and exit.
-l,log= log output to a file. The special file "auto" let me pick a name.
+l,log= log output to a file. The special name "auto" lets me pick it.
 p,pipe force prolix into pipe mode (not interactive).
 v,verbose print some information about what prolix is doing.
 V,version print version information.
@@ -93,7 +93,7 @@ var (
 
 	unaryRe = regexp.MustCompile(`\s*(\S+)\s+(.+)`)
 
-	// The command being run if we're in spawn mode, or nil.
+	// The command being run if we're in spawn mode, or "".
 	spawnedProgram string
 
 	logFile *os.File
