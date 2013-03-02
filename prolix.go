@@ -440,7 +440,7 @@ func interact(done chan<- string) {
 	const prompt = "prolix> "
 L:
 	for {
-		cmd := readline.String(prompt)
+		cmd, _ := readline.String(prompt)
 		if cmd == "" {
 			break L
 		}
