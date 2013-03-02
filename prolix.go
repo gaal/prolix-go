@@ -94,7 +94,7 @@ var (
 	unaryRe = regexp.MustCompile(`\s*(\S+)\s+(.+)`)
 
 	// The command being run if we're in spawn mode, or nil.
-	spawnedProgram *string
+	spawnedProgram string
 
 	logFile *os.File
 )
@@ -225,10 +225,10 @@ func openLog() {
 	nowString := time.Now().Format(timestampFormat)
 	filename := log
 	if filename == "auto" {
-		if spawnedProgram == nil { // Pipe mode.
+		if spawnedProgram == "" { // Pipe mode.
 			filename = "prolix.%d"
 		} else {
-			filename = *spawnedProgram + ".%d"
+			filename = spawnedProgram + ".%d"
 		}
 	}
 	if !strings.Contains(filename, string(os.PathSeparator)) {
@@ -281,6 +281,9 @@ func main() {
 	spec := options.NewOptions(optionSpec).SetParseCallback(myParse)
 	opt := spec.Parse(os.Args[1:])
 	args := opt.Leftover
+	if len(args) > 0 {
+		spawnedProgram = args[0]
+	}
 	importIgnoreRE(ignoreRe)
 	if !importSnippet(snippet) {
 		os.Exit(1)
