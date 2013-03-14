@@ -282,7 +282,7 @@ func main() {
 	opt := spec.Parse(os.Args[1:])
 	args := opt.Leftover
 	if len(args) > 0 {
-		spawnedProgram = args[0]
+		spawnedProgram = filepath.Base(args[0])
 	}
 	importIgnoreRE(ignoreRe)
 	if !importSnippet(snippet) {
