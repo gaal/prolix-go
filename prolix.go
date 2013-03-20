@@ -8,7 +8,7 @@
 
    --ignore-{re, line, substring} may be used to suppress lines completely.
    --snippet may be used to rewrite a line, perhaps to trim a log field you're
-   not interested in on your console. [notyet]
+   not interested in on your console.
 
    These flags can be specified more than once.
 
@@ -18,7 +18,8 @@
 
    Prolix can also log its own output to a file, so that if you regularly use
    it to debug a server, for example, you can keep somewhat compact logs
-   automatically. [notyet]
+   automatically. With "-l auto", it'll pick the filename automatically in
+   your tempdir based on the command basename and a timestamp.
 
    Since Prolix knows your command line, it can figure out a profile for
    commands you run, so it'll remember different filters for different
@@ -30,11 +31,11 @@
 
    Examples:
 
-   prolix --ignore-substring '(spam)' -- mycmd --spamlevel=4
+     prolix --ignore-substring '(spam)' -- mycmd --spamlevel=4
+     # Then, while it's running: hit enter, an add patterns
 
-   cat existing.log | prolix -b "spammy"
+     cat existing.log | prolix -b "spammy"
 */
-
 package main
 
 import (
