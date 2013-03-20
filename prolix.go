@@ -54,7 +54,7 @@ import (
 	"github.com/gaal/go-options/options"
 )
 
-const versionString = "0.06-go"
+const versionString = "0.07-go"
 
 const timestampFormat = "20060102T150405" // yyyyMMddThhmmss in localtime.
 
@@ -68,7 +68,7 @@ h,help print this usage string and exit.
 l,log= log output to a file. The special name "auto" lets me pick it.
 p,pipe force prolix into pipe mode (not interactive).
 v,verbose print some information about what prolix is doing.
-V,version print version information.
+V,version print version information (`+versionString+`).
 r,ignore-re= ignore lines matching this regexp.
 n,ignore-line= ignore lines equal to this entirely.
 b,ignore-substring= ignore lines containing this substring.
