@@ -31,8 +31,9 @@
 
    Examples:
 
-     prolix --ignore-substring '(spam)' -- mycmd --spamlevel=4
-     # Then, while it's running: hit enter, an add patterns
+     prolix --ignore-substring 'still running...' -l auto -- mycmd --spamlevel=4
+     # Then, while it's running: hit enter, and add patterns.
+     # Filtered combined output goes to /tmp/mycmd.* (or where your tempdir is).
 
      cat existing.log | prolix -b "spammy"
 */
@@ -76,8 +77,8 @@ s,snippet= trim the line with this substitution. e.g., s/DEBUG|INFO//.
 
 var (
 	log     string
-	pipe    = false
-	verbose = false
+	pipe    bool
+	verbose bool
 
 	ignoreRe        = make([]string, 0)
 	ignoreLine      = make([]string, 0)
@@ -142,16 +143,22 @@ func myParse(s *options.OptionSpec, option string, value *string) {
 	}
 }
 
-func importIgnoreRE(pats []string) {
+func importIgnoreRE(pats []string) bool {
 	for _, v := range pats {
-		ignoreReVals = append(ignoreReVals, regexp.MustCompile(v))
+		if re, err := regexp.Compile(v); err == nil {
+			ignoreReVals = append(ignoreReVals, re)
+		} else {
+			fmt.Fprintf(os.Stderr, "invalid pattern: %q\n", v)
+			return false
+		}
 	}
+	return true
 }
 
 func importSnippet(subsitutions []string) (ok bool) {
 	for _, sub := range subsitutions {
 		if len(sub) < 4 {
-			fmt.Fprint(os.Stderr, "invalid substitution: ", sub)
+			fmt.Fprintf(os.Stderr, "invalid substitution: %q\n", sub)
 			return
 		}
 		delim := sub[1:2]
@@ -285,7 +292,9 @@ func main() {
 	if len(args) > 0 {
 		spawnedProgram = filepath.Base(args[0])
 	}
-	importIgnoreRE(ignoreRe)
+	if !importIgnoreRE(ignoreRe) {
+		os.Exit(1)
+	}
 	if !importSnippet(snippet) {
 		os.Exit(1)
 	}
@@ -463,8 +472,9 @@ L:
 		} else {
 			switch strings.Replace(unary[1], "_", "-", -1) {
 			case "ignore-re":
-				ignoreRe = append(ignoreRe, unary[2])
-				importIgnoreRE(unary[2:3])
+				if importIgnoreRE(unary[2:3]) {
+					ignoreRe = append(ignoreRe, unary[2])
+				}
 			case "ignore-line":
 				ignoreLine = append(ignoreLine, unary[2])
 			case "ignore-substring":
