@@ -52,6 +52,7 @@ import (
 
 	"github.com/bobappleyard/readline"
 	"github.com/gaal/go-options/options"
+	"github.com/gaal/go-util/regexputil"
 )
 
 const versionString = "0.07-go"
@@ -68,7 +69,7 @@ h,help print this usage string and exit.
 l,log= log output to a file. The special name "auto" lets me pick it.
 p,pipe force prolix into pipe mode (not interactive).
 v,verbose print some information about what prolix is doing.
-V,version print version information (`+versionString+`).
+V,version print version information (` + versionString + `).
 r,ignore-re= ignore lines matching this regexp.
 n,ignore-line= ignore lines equal to this entirely.
 b,ignore-substring= ignore lines containing this substring.
@@ -187,25 +188,11 @@ func importSnippet(subsitutions []string) (ok bool) {
 	return true
 }
 
-// regexp does not have a ReplaceFirst. Go figure.
-func ReplaceFirst(search *regexp.Regexp, replace, input string) string {
-	if m := search.FindStringSubmatchIndex(input); m != nil {
-		output := make([]byte, m[0])
-		copy(output, input[0:m[0]])
-		output = search.ExpandString(output, replace, input, m)
-		if m[1] < len(input) {
-			return string(output) + input[m[1]:]
-		}
-		return string(output)
-	}
-	return input
-}
-
 func substitute(sub Substitution, input string) string {
 	if sub.global {
 		return sub.search.ReplaceAllString(input, sub.replace)
 	}
-	return ReplaceFirst(sub.search, sub.replace, input)
+	return regexputil.ReplaceFirstString(sub.search, input, sub.replace)
 }
 
 func substituteAll(input string) (out string) {
