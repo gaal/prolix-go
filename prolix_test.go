@@ -2,16 +2,14 @@ package main
 
 import (
 	"testing"
-
-	tu "github.com/gaal/go-util/testingutil"
 )
 
 func TestImportSnippet(t *testing.T) {
 	testSnippets := []struct {
-		snippet         string
-		expectedReplace string
-		testInput       string
-		expectedOutput  string
+		snippet     string
+		wantReplace string
+		testInput   string
+		wantOutput  string
 	}{
 		// substitution, replace, input, output
 		{`s/a/b/`, `b`, `aaa`, `baa`},
@@ -25,13 +23,15 @@ func TestImportSnippet(t *testing.T) {
 		ok := importSnippet([]string{s.snippet})
 		imported := substitutionVals[0]
 
-		tu.ExpectEqual(t, ok, true, "substitution parse: %q", s.snippet)
-		tu.ExpectEqual(
-			t, imported.replace, s.expectedReplace,
-			"parsed replacement: %q", s.snippet)
-		actualOutput := substitute(imported, s.testInput)
-		tu.ExpectEqual(
-			t, actualOutput, s.expectedOutput,
-			"snippeting: %q=>%q", s.snippet, imported.search.String())
+		if !ok {
+			t.Fatalf("substitution parse: %q", s.snippet)
+		}
+		if imported.replace != s.wantReplace {
+			t.Errorf("parsed replacement: %q, got=%q, want=%q", s.snippet, imported.replace, s.wantReplace)
+		}
+		gotOutput := substitute(imported, s.testInput)
+		if gotOutput != s.wantOutput {
+			t.Errorf("snippeting: %q=>%q\nhave=%q\nwant=%q", s.snippet, imported.search, gotOutput, s.wantOutput)
+		}
 	}
 }

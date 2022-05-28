@@ -1,0 +1,6 @@
+github.com/bobappleyard/readline v0.0.0-20150707195538-7e300e02d38e h1:4G8AYOOwZdDWOiJR6D6JXaFmj5BDS7c5D5PyqsG/+Hg=
+github.com/bobappleyard/readline v0.0.0-20150707195538-7e300e02d38e/go.mod h1:fmqtV+Wqx0uFYLN1F4VhjZdtT56Dr8c3yA7nALFsw/Q=
+github.com/gaal/go-options v0.0.0-20130407164705-f0a917ef92de h1:l5gYMvb252JtBGn1je2cqW5XuIsDicspN/Sx/8rwW9s=
+github.com/gaal/go-options v0.0.0-20130407164705-f0a917ef92de/go.mod h1:EXU1yfnHmWKyHl8wkNg+fDoPD+Fj+PabtSKzM5jyrTU=
+github.com/gaal/go-util v0.0.0-20130421101011-3180a4f15808 h1:qmBxGKPtVewyyooOAyCE0qqM6fwg1cgFaWXqsWkbyrg=
+github.com/gaal/go-util v0.0.0-20130421101011-3180a4f15808/go.mod h1:3VpqUKrbsjbALAcpJGuiV1xMRqhqomCet57gpF9ynuA=
